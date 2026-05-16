@@ -39,7 +39,7 @@ int aincrad_production(struct xdp_md *ctx) {
     __u32 src_ip = iph->saddr;
     __u64 now = bpf_ktime_get_ns();
 
-    // 🛡️ FILTRO 1: Verificação Ultra-Rápida da Blacklist
+    //  FILTRO 1: Verificação Ultra-Rápida da Blacklist
     __u64 *last_attack = blacklist.lookup(&src_ip);
     if (last_attack) {
         // Verifica se o castigo de 60 segundos já expirou
@@ -68,7 +68,7 @@ int aincrad_production(struct xdp_md *ctx) {
 
     char *payload = (char *)(udph + 1);
     
-    // 🔍 FILTRO 2: Scanner Robusto com Bounded Loop (Evita Evasão por Espaços)
+    //  FILTRO 2: Scanner Robusto com Bounded Loop (Evita Evasão por Espaços)
     // Procura a assinatura "AINC" de forma contígua dentro da janela inicial
     #pragma unroll
     for (int i = 0; i < MAX_PAYLOAD_SCAN; i++) {
@@ -98,7 +98,7 @@ int aincrad_production(struct xdp_md *ctx) {
 
 interface = "enp3s0" # Sua placa de rede
 
-print(f"🛡️ [Aincrad Enterprise] Compilando motor de alta resiliência na interface {interface}...")
+print(f" [Aincrad Enterprise] Compilando motor de alta resiliência na interface {interface}...")
 b = BPF(text=ebpf_code)
 fn = b.load_func("aincrad_production", BPF.XDP)
 b.attach_xdp(interface, fn, flags=BPF.XDP_FLAGS_SKB_MODE)
