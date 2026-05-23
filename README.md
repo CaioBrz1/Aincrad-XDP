@@ -1,4 +1,4 @@
-# 🛡️ Aincrad-XDP
+#  Aincrad-XDP
 
 Aincrad-XDP is a high-performance experimental firewall developed using **eBPF** (Extended Berkeley Packet Filter) and **XDP** (eXpress Data Path) for the Linux Kernel. 
 
@@ -6,14 +6,14 @@ The project implements **Deep Packet Inspection (DPI)** at the network driver la
 
 ---
 
-## 🏗️ Architecture
+##  Architecture
 
 The system is divided into two main layers:
 
 * **Kernel-Space (`aincrad_xdp.bpf.c`):** Injected directly into the network driver. It performs ultra-fast lookups in a high-speed `BPF_PERCPU_HASH` map. If a source IP is blacklisted, the packet is pulverized instantly (`XDP_DROP`) without consuming CPU cycles for payload processing.
 * **User-Space (`aincrad_monitor.py`):** A Python agent using the BCC library that listens to the kernel, captures drop events, and logs real-time alerts.
 
-## 🛠️ Prerequisites
+##  Prerequisites
 
 Ensure you have the required development tools installed (Arch Linux):
 
