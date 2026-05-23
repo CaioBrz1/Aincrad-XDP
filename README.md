@@ -1,4 +1,4 @@
-# 🛠️ystems Engineer | Performance Architect
+# Systems Engineer | Performance Architect
 
 "Perfection first; your name second; your reputation third."
 
