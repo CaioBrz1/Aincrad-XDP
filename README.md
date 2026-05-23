@@ -13,25 +13,28 @@ The system is divided into two main layers:
 * **Kernel-Space (`aincrad_xdp.bpf.c`):** Injected directly into the network driver. It performs ultra-fast lookups in a high-speed `BPF_PERCPU_HASH` map. If a source IP is blacklisted, the packet is pulverized instantly (`XDP_DROP`) without consuming CPU cycles for payload processing.
 * **User-Space (`aincrad_monitor.py`):** A Python agent using the BCC library that listens to the kernel, captures drop events, and logs real-time alerts.
 
-##  Prerequisites
+## ⚠️⚠️ Prerequisites
 
-Ensure you have the required development tools installed (Arch Linux):
+To build and run the BPF programs, you need the following development tools installed. 
 
-```bash
+**For Arch Linux:**
+
 sudo pacman -S bcc clang llvm linux-headers python-bcc
 
-⚙️ Systemd Integration
+## Ensure you have the required development tools installed (Arch Linux):
+```
+sudo pacman -S bcc clang llvm linux-headers python-bcc
+```
+## ⚙️ Systemd Integration
 
 To ensure Aincrad-XDP starts automatically on boot:
 
-    Create the service file:
-
-Bash
-
+  ###  Create the service file:
+```
 sudo nano /etc/systemd/system/aincrad-xdp.service
-
-    Paste the following configuration (Replace YOUR_USERNAME with your actual Linux username):
-
+```
+  #  Paste the following configuration (Replace YOUR_USERNAME with your actual Linux username):
+  ```
 Ini, TOML
 
 [Unit]
@@ -47,19 +50,21 @@ RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
+```
 
-    Manage the service:
+   # Manage the service:
 
-    Reload: sudo systemctl daemon-reload
+```
+   # Reload: sudo systemctl daemon-reload
 
-    Enable: sudo systemctl enable --now aincrad-xdp.service
+   # Enable: sudo systemctl enable --now aincrad-xdp.service
 
-    Status: sudo systemctl status aincrad-xdp.service
+   # Status: sudo systemctl status aincrad-xdp.service
 
-    Logs: sudo journalctl -u aincrad-xdp.service -f
-
-    ⚠️ Disclaimer
-    This tool runs in Kernel-Space. Improper configuration or bugs in BPF programs can lead to kernel instability or system crashes (Kernel Panic). Use with caution and test in non-critical environments first.
+   # Logs: sudo journalctl -u aincrad-xdp.service -f
+```
+  ###  ⚠️⚠️⚠️ Disclaimer
+   # This tool runs in Kernel-Space. Improper configuration or bugs in BPF programs can lead to kernel instability or system crashes (Kernel Panic). Use with caution and test in non-critical environments first.
 
 📄 License
 
