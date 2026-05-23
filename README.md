@@ -1,23 +1,36 @@
+```markdown
 # Aincrad-XDP
 
-Aincrad-XDP é um firewall experimental de alto desempenho desenvolvido em eBPF (Extended Berkeley Packet Filter) e XDP (eXpress Data Path) para o Kernel do Linux. O projeto implementa um sistema de DPI (Deep Packet Inspection) na camada de driver de rede para mitigar ataques UDP maliciosos baseados em assinatura, integrando uma camada de monitoramento em tempo real via Python (BCC).
+Aincrad-XDP is a high-performance experimental firewall developed using eBPF (Extended Berkeley Packet Filter) and XDP (eXpress Data Path) for the Linux Kernel. The project implements Deep Packet Inspection (DPI) at the network driver layer to mitigate malicious UDP attacks based on signatures, integrating a real-time monitoring layer via Python (BCC).
 
-## Arquitetura do Sistema
+## Architecture
 
-O projeto é dividido em duas camadas principais:
+The system is divided into two main layers:
 
-* **Kernel-Space (aincrad_xdp.bpf.c):** Injetado diretamente no driver de rede (ou camada SKB). Faz uma checagem ultra-rápida em um mapa de estado de alta velocidade (`BPF_MAP_TYPE_HASH`). Se o IP de origem já estiver na **Blacklist**, o pacote é pulverizado instantaneamente (`XDP_DROP`) sem consumir CPU processando o payload. Caso contrário, o motor inspeciona o payload através de um scanner dinâmico com laço seguro (*Bounded Loop*) contra evasão por espaços. Se a assinatura mágica `AINC` for detectada, o IP é banido por 60 segundos e o evento é enviado para o espaço de usuário (`BPF_PERF_OUTPUT`).
-* **User-Space (aincrad_monitor.py):** Agente em Python utilizando a biblioteca BCC que escuta a memória RAM do Kernel, captura os eventos de drop e exibe alertas formatados da Blacklist em tempo real no terminal.
+*   **Kernel-Space (`aincrad_xdp.bpf.c`):** Injected directly into the network driver. It performs ultra-fast lookups in a high-speed `BPF_PERCPU_HASH` map. If a source IP is blacklisted, the packet is pulverized instantly (`XDP_DROP`) without consuming CPU cycles for payload processing. If not, the engine inspects the payload against a specific signature (AINC). If detected, the IP is banned for 60 seconds.
+*   **User-Space (`aincrad_monitor.py`):** A Python agent using the BCC library that listens to the kernel, captures drop events, and logs real-time alerts.
 
+## Prerequisites
 
-## Como Rodar em Segundo Plano (Systemd)
+Ensure you have the required development tools installed (Arch Linux):
 
-Para que o escudo de Aincrad seja iniciado automaticamente junto com o Arch Linux e rode em segundo plano, você pode transformá-lo em um serviço do sistema.
-
-### 1. Criar o arquivo de serviço
-Crie o arquivo de configuração com o comando:
 ```bash
-sudo nano /etc/systemd/system/aincrad-xdp.service
+sudo pacman -S bcc clang llvm linux-headers python-bcc
+
+
+## Systemd Integration (Background Service)
+
+To ensure Aincrad-XDP starts automatically on boot:
+
+##    Create the service file:
+
+Bash
+
+   sudo nano /etc/systemd/system/aincrad-xdp.service
+
+##    Paste the following configuration (Replace YOUR_USERNAME with your actual Linux username):
+
+Ini, TOML
 
 [Unit]
 Description=Aincrad eBPF/XDP Firewall Monitor
@@ -25,35 +38,29 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/home/SEU_USUARIO/Aincrad-XDP
-ExecStart=/usr/bin/python3 /home/SEU_USUARIO/Aincrad-XDP/aincrad_monitor.py
+WorkingDirectory=/home/YOUR_USERNAME/Aincrad-XDP
+ExecStart=/usr/bin/python3 /home/YOUR_USERNAME/Aincrad-XDP/aincrad_monitor.py
 Restart=always
 RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
 
-Comandos de Gerenciamento
+    Manage the service with these commands:
 
-Sempre que precisar mexer no escudo, utilize os comandos abaixo de qualquer lugar do terminal:
+    Reload systemd: sudo systemctl daemon-reload
 
-    Atualizar o sistema após criar/editar o arquivo:
-sudo systemctl daemon-reload
+    Enable on boot: sudo systemctl enable aincrad-xdp.service
 
-    Ativar para ligar junto com o PC:
-sudo systemctl enable aincrad-xdp.service
+    Start now: sudo systemctl start aincrad-xdp.service
 
-    Ligar o escudo agora:
-sudo systemctl start aincrad-xdp.service
+    Check status: sudo systemctl status aincrad-xdp.service
 
-    Ver se ele está rodando (Status):
-sudo systemctl status aincrad-xdp.service
+    View live logs: sudo journalctl -u aincrad-xdp.service -f
 
-    Desligar o escudo:
- sudo systemctl stop aincrad-xdp.service
+##   ⚠️ Disclaimer
 
+This tool runs in Kernel-Space. Improper configuration or bugs in BPF programs can lead to kernel instability or system crashes (Kernel Panic). Use with caution and test in non-critical environments first.
+License
 
-Como ver em tempo real os alertas?
-sudo journalctl -u aincrad-xdp.service -f
-
-
+MIT License
