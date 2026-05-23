@@ -1,143 +1,96 @@
 #!/usr/bin/env python3
-from bcc import BPF
-import ctypes
+import os
+import sys
+import argparse
 import socket
+import struct
 import time
+import ctypes
+from bcc import BPF
+import bcc.libbcc as libbcc
 
-# O MOTOR EM C - NÍVEL DE PRODUÇÃO
-ebpf_code = """
-#include <linux/bpf.h>
-#include <linux/if_ether.h>
-#include <linux/ip.h>
-#include <linux/udp.h>
+# Caminhos persistentes no Kernel
+BLACKLIST_PATH = "/sys/fs/bpf/aincrad_blacklist"
+STATS_PATH = "/sys/fs/bpf/aincrad_stats"
 
-#define MAX_PAYLOAD_SCAN 16  // Varre os primeiros 16 bytes do payload para evitar evasão
-#define BLACKLIST_TIMEOUT_NS 60000000000ULL // 60 segundos de bloqueio (em nanosegundos)
+def uint32_be_to_ip(val):
+    return socket.inet_ntoa(struct.pack("I", val))
 
-// Estrutura para os eventos enviados ao Python
-struct event_t {
-    __u32 src_ip;
-    __u32 pkt_len;
-    __u32 reason; // 1 = Flag flagrada no Scanner, 2 = Já estava na Blacklist
-};
-
-// TABELA 1: Mapa Hash da Blacklist (Chave: IP do atacante, Valor: Timestamp do último ataque)
-BPF_HASH(blacklist, __u32, __u64, 1024);
-
-// TABELA 2: Duto de Telemetria para o Python
-BPF_PERF_OUTPUT(events);
-
-int aincrad_production(struct xdp_md *ctx) {
-    void *data = (void *)(long)ctx->data;
-    void *data_end = (void *)(long)ctx->data_end;
-
-    // Alinhamento direto para o IP (Modo Genérico/SKB)
-    struct iphdr *iph = data;
-    if ((void *)(iph + 1) > data_end)
-        return XDP_PASS;
-
-    __u32 src_ip = iph->saddr;
-    __u64 now = bpf_ktime_get_ns();
-
-    //  FILTRO 1: Verificação Ultra-Rápida da Blacklist
-    __u64 *last_attack = blacklist.lookup(&src_ip);
-    if (last_attack) {
-        // Verifica se o castigo de 60 segundos já expirou
-        if (now - *last_attack < BLACKLIST_TIMEOUT_NS) {
-            // IP criminoso detectado! Drop imediato sem processar nada
-            struct event_t event = {};
-            event.src_ip = src_ip;
-            event.pkt_len = ctx->data_end - ctx->data;
-            event.reason = 2;
-            events.perf_submit(ctx, &event, sizeof(event));
-            return XDP_DROP;
-        } else {
-            // Tempo expirou, remove da lista negra para dar uma segunda chance
-            blacklist.delete(&src_ip);
-        }
-    }
-
-    // Filtra apenas tráfego UDP
-    if (iph->protocol != 17)
-        return XDP_PASS;
-
-    __u32 ip_hlen = iph->ihl * 4;
-    struct udphdr *udph = (void *)iph + ip_hlen;
-    if ((void *)(udph + 1) > data_end)
-        return XDP_PASS;
-
-    char *payload = (char *)(udph + 1);
+def carregar_mapas_compartilhados():
+    """Carrega os mapas já fixados no Kernel."""
+    if not os.path.exists(BLACKLIST_PATH) or not os.path.exists(STATS_PATH):
+        raise Exception("Escudo não está rodando (Mapas não encontrados).")
     
-    //  FILTRO 2: Scanner Robusto com Bounded Loop (Evita Evasão por Espaços)
-    // Procura a assinatura "AINC" de forma contígua dentro da janela inicial
-    #pragma unroll
-    for (int i = 0; i < MAX_PAYLOAD_SCAN; i++) {
-        // Garante a segurança de acesso à memória exigida pelo Verificador do Kernel
-        if ((void *)(payload + i + 4) > data_end)
-            break;
-
-        if (payload[i] == 'A' && payload[i+1] == 'I' && payload[i+2] == 'N' && payload[i+3] == 'C') {
-            // Ataque detectado pelo Scanner! 
-            // 1. Registra/Atualiza o IP na Blacklist do Kernel com o timestamp atual
-            blacklist.update(&src_ip, &now);
-
-            // 2. Reporta o evento para o espaço de usuário
-            struct event_t event = {};
-            event.src_ip = src_ip;
-            event.pkt_len = ctx->data_end - ctx->data;
-            event.reason = 1;
-            events.perf_submit(ctx, &event, sizeof(event));
-
-            return XDP_DROP; // Pulveriza o frame
-        }
-    }
-
-    return XDP_PASS;
-}
-"""
-
-interface = "enp3s0" # Sua placa de rede
-
-print(f" [Aincrad Enterprise] Compilando motor de alta resiliência na interface {interface}...")
-b = BPF(text=ebpf_code)
-fn = b.load_func("aincrad_production", BPF.XDP)
-b.attach_xdp(interface, fn, flags=BPF.XDP_FLAGS_SKB_MODE)
-
-class EventData(ctypes.Structure):
-    _fields_ = [
-        ("src_ip", ctypes.c_uint32),
-        ("pkt_len", ctypes.c_uint32),
-        ("reason", ctypes.c_uint32)
-    ]
-
-# Dicionário simples para monitorar logs repetidos no Python e não travar o terminal
-ultimo_print = {}
-
-def print_event(cpu, data, size):
-    event = ctypes.cast(data, ctypes.POINTER(EventData)).contents
-    ip_str = socket.inet_ntoa(ctypes.c_uint32(event.src_ip).value.to_bytes(4, 'little'))
+    # Obter FDs dos mapas fixados
+    fd_black = libbcc.lib.bpf_obj_get(BLACKLIST_PATH.encode())
+    fd_stats = libbcc.lib.bpf_obj_get(STATS_PATH.encode())
     
-    agora = time.time()
-    # Se o IP já está na blacklist, evita inundar o terminal do usuário (Apenas atualiza internamente)
-    if event.reason == 2:
-        if agora - ultimo_print.get(ip_str, 0) < 2: # Só printa lembrete a cada 2 segundos por IP
-            return
+    # Criar contexto temporário para interagir com os mapas
+    bpf_ctx = BPF(text=b'BPF_HASH(blacklist, u32, u64); BPF_HASH(stats_map, u32, u64);') 
     
-    ultimo_print[ip_str] = agora
+    blacklist = bpf_ctx.get_table("blacklist")
+    blacklist.map_fd = fd_black
+    
+    stats = bpf_ctx.get_table("stats_map")
+    stats.map_fd = fd_stats
+    
+    return blacklist, stats
 
-    if event.reason == 1:
-        print(f"🚨 [SCANNER] Assinatura detectada! Origem: {ip_str} | Tamanho: {event.pkt_len} B | Ação: IP BANIDO POR 1 MINUTO")
-    elif event.reason == 2:
-        print(f"🚫 [BLACKLIST] Bloqueio Ativo! Pacote de {ip_str} mitigado instantaneamente no hardware.")
+def imprimir_stats():
+    try:
+        _, stats = carregar_mapas_compartilhados()
+        print("\n🏰 [Aincrad Enterprise] — Estatísticas de Bloqueio")
+        print("-" * 50)
+        print(f"{'IP':<15} | {'Drops'}")
+        for k, v in stats.items():
+            print(f"{uint32_be_to_ip(k.value):<15} | {v.value}")
+        print("-" * 50)
+    except Exception as e:
+        print(f"Erro ao ler estatísticas: {e}")
 
-b["events"].open_perf_buffer(print_event)
+if __name__ == "__main__":
+    if os.getuid() != 0:
+        print("Erro: Precisa ser ROOT.")
+        sys.exit(1)
 
-print("🏰 [Aincrad Enterprise] Sistema operacional blindado com tabelas de estado em Kernel-Space.")
-print("Press Ctrl+C para encerrar o escudo.")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--list", action="store_true")
+    args = parser.parse_args()
+
+    # Fluxo CLI
+    if args.list:
+        imprimir_stats()
+        sys.exit(0)
+
+    # Fluxo Monitor (Serviço)
+    print("🚀 Aincrad-XDP Iniciado...")
+    b = BPF(src_file="aincrad_xdp.bpf.c")
+    fn = b.load_func("aincrad_fw_filter", BPF.XDP)
+    b.attach_xdp("enp3s0", fn, 0)
+    
+    # Pinagem dos mapas
+    blacklist = b.get_table("blacklist")
+    stats_map = b.get_table("stats_map")
+    
+    libbcc.lib.bpf_obj_pin(blacklist.get_fd(), BLACKLIST_PATH.encode())
+    libbcc.lib.bpf_obj_pin(stats_map.get_fd(), STATS_PATH.encode())
+
+    print("🛡️ Mapas fixados no Kernel. Monitorando...")
+
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\n🛑 Parando Aincrad...")
+        if os.path.exists(BLACKLIST_PATH): os.remove(BLACKLIST_PATH)
+        if os.path.exists(STATS_PATH): os.remove(STATS_PATH)
+        sys.exit(0)
 
 try:
-    while True:
-        b.perf_buffer_poll()
-except KeyboardInterrupt:
-    print("\\n🔓 Desativando infraestrutura e limpando ganchos XDP...")
-    b.remove_xdp(interface, flags=BPF.XDP_FLAGS_SKB_MODE)
+    b.attach_xdp("enp3s0", fn, flags=2) 
+    print("✅ Sucesso! Modo NATIVO ativado. Você está no Modo Turbo.")
+except Exception as e:
+    print(f"⚠️ O driver recusou o modo nativo: {e}")
+    print("🔄 Tentando modo GENERIC (Fallback)...")
+    b.attach_xdp("enp3s0", fn, flags=0)
+    print("🛡️ Aincrad rodando em modo GENERIC (Ainda muito rápido!).")
