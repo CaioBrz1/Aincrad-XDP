@@ -1,34 +1,36 @@
-```markdown
-# Aincrad-XDP
+# 🛡️ Aincrad-XDP
 
-Aincrad-XDP is a high-performance experimental firewall developed using eBPF (Extended Berkeley Packet Filter) and XDP (eXpress Data Path) for the Linux Kernel. The project implements Deep Packet Inspection (DPI) at the network driver layer to mitigate malicious UDP attacks based on signatures, integrating a real-time monitoring layer via Python (BCC).
+Aincrad-XDP is a high-performance experimental firewall developed using **eBPF** (Extended Berkeley Packet Filter) and **XDP** (eXpress Data Path) for the Linux Kernel. 
 
-## Architecture
+The project implements **Deep Packet Inspection (DPI)** at the network driver layer to mitigate malicious UDP attacks based on signatures, integrating a real-time monitoring layer via Python (BCC).
+
+---
+
+## 🏗️ Architecture
 
 The system is divided into two main layers:
 
-*   **Kernel-Space (`aincrad_xdp.bpf.c`):** Injected directly into the network driver. It performs ultra-fast lookups in a high-speed `BPF_PERCPU_HASH` map. If a source IP is blacklisted, the packet is pulverized instantly (`XDP_DROP`) without consuming CPU cycles for payload processing. If not, the engine inspects the payload against a specific signature (AINC). If detected, the IP is banned for 60 seconds.
-*   **User-Space (`aincrad_monitor.py`):** A Python agent using the BCC library that listens to the kernel, captures drop events, and logs real-time alerts.
+* **Kernel-Space (`aincrad_xdp.bpf.c`):** Injected directly into the network driver. It performs ultra-fast lookups in a high-speed `BPF_PERCPU_HASH` map. If a source IP is blacklisted, the packet is pulverized instantly (`XDP_DROP`) without consuming CPU cycles for payload processing.
+* **User-Space (`aincrad_monitor.py`):** A Python agent using the BCC library that listens to the kernel, captures drop events, and logs real-time alerts.
 
-## Prerequisites
+## 🛠️ Prerequisites
 
 Ensure you have the required development tools installed (Arch Linux):
 
 ```bash
 sudo pacman -S bcc clang llvm linux-headers python-bcc
 
-
-## Systemd Integration (Background Service)
+⚙️ Systemd Integration
 
 To ensure Aincrad-XDP starts automatically on boot:
 
-##    Create the service file:
+    Create the service file:
 
 Bash
 
-   sudo nano /etc/systemd/system/aincrad-xdp.service
+sudo nano /etc/systemd/system/aincrad-xdp.service
 
-##    Paste the following configuration (Replace YOUR_USERNAME with your actual Linux username):
+    Paste the following configuration (Replace YOUR_USERNAME with your actual Linux username):
 
 Ini, TOML
 
@@ -46,21 +48,19 @@ RestartSec=5
 [Install]
 WantedBy=multi-user.target
 
-    Manage the service with these commands:
+    Manage the service:
 
-    Reload systemd: sudo systemctl daemon-reload
+    Reload: sudo systemctl daemon-reload
 
-    Enable on boot: sudo systemctl enable aincrad-xdp.service
+    Enable: sudo systemctl enable --now aincrad-xdp.service
 
-    Start now: sudo systemctl start aincrad-xdp.service
+    Status: sudo systemctl status aincrad-xdp.service
 
-    Check status: sudo systemctl status aincrad-xdp.service
+    Logs: sudo journalctl -u aincrad-xdp.service -f
 
-    View live logs: sudo journalctl -u aincrad-xdp.service -f
+    ⚠️ Disclaimer
+    This tool runs in Kernel-Space. Improper configuration or bugs in BPF programs can lead to kernel instability or system crashes (Kernel Panic). Use with caution and test in non-critical environments first.
 
-##   ⚠️ Disclaimer
-
-This tool runs in Kernel-Space. Improper configuration or bugs in BPF programs can lead to kernel instability or system crashes (Kernel Panic). Use with caution and test in non-critical environments first.
-License
+📄 License
 
 MIT License
