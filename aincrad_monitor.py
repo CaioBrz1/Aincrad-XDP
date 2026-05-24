@@ -8,10 +8,23 @@ import time
 import ctypes
 from bcc import BPF
 import bcc.libbcc as libbcc
+import json
+import sys
 
 # Caminhos persistentes no Kernel
 BLACKLIST_PATH = "/sys/fs/bpf/aincrad_blacklist"
 STATS_PATH = "/sys/fs/bpf/aincrad_stats"
+BAN_DURATION_NS = 60000000000 # 60 segundos em nanosegundos
+
+# 2. Carrega o BPF
+b = BPF(src_file="aincrad_xdp.bpf.c")
+blacklist = b.get_table("blacklist")
+fn = b.load_func("xdp_prog", BPF.XDP)
+b.attach_xdp("enp3s0", fn, 0)
+print("✅ XDP acoplado com sucesso na interface enp3s0!")
+
+# 3.
+last_cleanup = time.time()
 
 def uint32_be_to_ip(val):
     return socket.inet_ntoa(struct.pack("I", val))
@@ -36,61 +49,91 @@ def carregar_mapas_compartilhados():
     
     return blacklist, stats
 
-def imprimir_stats():
-    try:
-        _, stats = carregar_mapas_compartilhados()
-        print("\n🏰 [Aincrad Enterprise] — Estatísticas de Bloqueio")
-        print("-" * 50)
-        print(f"{'IP':<15} | {'Drops'}")
-        for k, v in stats.items():
-            print(f"{uint32_be_to_ip(k.value):<15} | {v.value}")
-        print("-" * 50)
-    except Exception as e:
-        print(f"Erro ao ler estatísticas: {e}")
-
-if __name__ == "__main__":
-    if os.getuid() != 0:
-        print("Erro: Precisa ser ROOT.")
-        sys.exit(1)
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--list", action="store_true")
-    args = parser.parse_args()
-
-    # Fluxo CLI
-    if args.list:
-        imprimir_stats()
-        sys.exit(0)
-
-    # Fluxo Monitor (Serviço)
-    print("🚀 Aincrad-XDP Iniciado...")
-    b = BPF(src_file="aincrad_xdp.bpf.c")
-    fn = b.load_func("aincrad_fw_filter", BPF.XDP)
-    b.attach_xdp("enp3s0", fn, 0)
+def imprimir_as_json(b):
+    stats_map = b.get_table("stats")
     
-    # Pinagem dos mapas
-    blacklist = b.get_table("blacklist")
-    stats_map = b.get_table("stats_map")
+    # Prepara os acumuladores
+    total_passed = 0
+    total_drop = 0
+    total_ainc = 0
     
-    libbcc.lib.bpf_obj_pin(blacklist.get_fd(), BLACKLIST_PATH.encode())
-    libbcc.lib.bpf_obj_pin(stats_map.get_fd(), STATS_PATH.encode())
+    # Soma de todos os núcleos (Per-CPU array)
+    for cpu_val in stats_map[0]:
+        total_passed += cpu_val.passed
+        total_drop += cpu_val.drop
+        total_ainc += cpu_val.ainc_blocked
+        
+    # Cria o dicionário
+    data = {
+        "status": "active",
+        "metrics": {
+            "passed": total_passed,
+            "dropped": total_drop,
+            "ainc_blocked": total_ainc
+        }
+    }
 
-    print("🛡️ Mapas fixados no Kernel. Monitorando...")
+def load_whitelist(b):
+    whitelist = b.get_table("whitelist")
+    
+    # Lista de IPs autorizados (Sua máquina + Destinos permitidos)
+    ips_autorizados = ["192.168.1.1"] 
+    
+    for ip in ips_autorizados:
+        ip_int = struct.unpack("I", socket.inet_aton(ip))[0]
+        whitelist[ctypes.c_uint32(ip_int)] = ctypes.c_ulonglong(1)
+        print(f"✅ IP {ip} adicionado com sucesso na Whitelist!")
 
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        print("\n🛑 Parando Aincrad...")
-        if os.path.exists(BLACKLIST_PATH): os.remove(BLACKLIST_PATH)
-        if os.path.exists(STATS_PATH): os.remove(STATS_PATH)
-        sys.exit(0)
+# No seu main(), chame isso antes do loop:
+load_whitelist(b)
+
+# --- LOOP PRINCIPAL (LIMPEZA) ---
+syn_map = b.get_table("syn_counters")
+
+wl = b.get_table("whitelist")
+stats_map = b.get_table("stats")
+
+import time # Garanta que o time esteja importado no topo
+
+last_report = time.time()
+last_cleanup = time.time()
+
+# --- LOOP PRINCIPAL ---
+
+last_report = time.time()
+last_cleanup = time.time()
+
+class Stats(ctypes.Structure):
+    _fields_ = [("drop", ctypes.c_ulonglong),
+                ("passed", ctypes.c_ulonglong),
+                ("ainc_blocked", ctypes.c_ulonglong)]
+
+# 2.
+stats = b.get_table("stats") 
+
+print("Monitoramento iniciado. Pressione Ctrl+C para parar.")
 
 try:
-    b.attach_xdp("enp3s0", fn, flags=2) 
-    print("✅ Sucesso! Modo NATIVO ativado. Você está no Modo Turbo.")
-except Exception as e:
-    print(f"⚠️ O driver recusou o modo nativo: {e}")
-    print("🔄 Tentando modo GENERIC (Fallback)...")
-    b.attach_xdp("enp3s0", fn, flags=0)
-    print("🛡️ Aincrad rodando em modo GENERIC (Ainda muito rápido!).")
+    while True:
+        current_time = time.time()
+        
+        if (current_time - last_report) > 5:
+            # CORREÇÃO: Usar 'stats' em vez de 'stats_map'
+            print(f"DEBUG: O mapa contém {len(stats)} chaves.")
+
+            if len(stats) > 0:
+                print(f"\n--- [ {time.ctime()} ] DADOS ENCONTRADOS ---")
+                for key, value in stats.items():
+                    print(f"DEBUG: Chave encontrada: {key.value}")
+                    # Agora o Python sabe que 'value' é do tipo Stats
+                    print(f"Drop: {value.drop} | Pass: {value.passed} | Bloq: {value.ainc_blocked}")
+            else:
+                print("\n⏳ [Status] Mapa carregado, mas ainda não recebeu nenhum dado.")
+            
+            last_report = current_time
+        
+        time.sleep(1) # Opcional: evita uso excessivo de CPU no loop
+
+except KeyboardInterrupt:
+    print("\n🛑 Parando Aincrad...")
+    sys.exit(0)
