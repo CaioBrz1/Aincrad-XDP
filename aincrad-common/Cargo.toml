@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-zerocopy = "0.7" # Essencial para converter dados entre Kernel e User
+zerocopy = "0.7" 

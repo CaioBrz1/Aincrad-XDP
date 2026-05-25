@@ -10,8 +10,12 @@ network-types = { version = "0.0.6", default-features = false }
 aincrad-common = { path = "../aincrad-common" }
 
 [profile.dev]
+<<<<<<< HEAD
 panic = "abort"
 debug = true 
+=======
+panic = "abort" 
+>>>>>>> 1052fd456e4db443fbbf2dedf5bb1ea93bea65b8
 
 [profile.release]
 panic = "abort"
