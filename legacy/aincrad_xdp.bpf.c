@@ -79,10 +79,10 @@ int xdp_prog(struct xdp_md *ctx) {
 
     // 5. WHITELIST (MODO OBSERVAÇÃO)
     if (whitelist.lookup(&src_ip) == NULL) {
-        // Loga o IP que não está na whitelist, mas deixa passar!
+        
         bpf_trace_printk("DEBUG: IP nao autorizado: %x\n", src_ip);
         update_stats(1);
-        return XDP_PASS; // <--- Mudamos de DROP para PASS para testar
+        return XDP_PASS; 
     }
 
     // 6. BLACKLIST
@@ -98,7 +98,7 @@ int xdp_prog(struct xdp_md *ctx) {
     }
     
     if (iph->protocol == IPPROTO_UDP) {
-        // Lógica de ataque AINC aqui
+       
     }
 
     // 8. Tudo certo, deixa passar
