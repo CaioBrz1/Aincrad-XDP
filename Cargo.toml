@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "aincrad-common",
+    "aincrad-ebpf",
+    "aincrad"
+]
+resolver = "2"

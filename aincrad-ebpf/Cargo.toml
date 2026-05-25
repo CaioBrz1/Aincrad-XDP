@@ -1,0 +1,15 @@
+[package]
+name = "aincrad-ebpf"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+aya-ebpf = "0.1" 
+aya-log-ebpf = "0.1"
+aincrad-common = { path = "../aincrad-common" }
+
+[profile.dev]
+panic = "abort" # eBPF não suporta stack unwinding
+
+[profile.release]
+panic = "abort"
