@@ -9,7 +9,7 @@ aya-log-ebpf = "0.1"
 aincrad-common = { path = "../aincrad-common" }
 
 [profile.dev]
-panic = "abort" # eBPF não suporta stack unwinding
+panic = "abort" 
 
 [profile.release]
 panic = "abort"
