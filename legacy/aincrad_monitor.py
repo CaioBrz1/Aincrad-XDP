@@ -14,7 +14,7 @@ import sys
 # Caminhos persistentes no Kernel
 BLACKLIST_PATH = "/sys/fs/bpf/aincrad_blacklist"
 STATS_PATH = "/sys/fs/bpf/aincrad_stats"
-BAN_DURATION_NS = 60000000000 # 60 segundos em nanosegundos
+BAN_DURATION_NS = 60000000000 
 
 # 2. Carrega o BPF
 b = BPF(src_file="aincrad_xdp.bpf.c")
@@ -38,7 +38,7 @@ def carregar_mapas_compartilhados():
     fd_black = libbcc.lib.bpf_obj_get(BLACKLIST_PATH.encode())
     fd_stats = libbcc.lib.bpf_obj_get(STATS_PATH.encode())
     
-    # Criar contexto temporário para interagir com os mapas
+    # Contexto temporário para interagir com os mapas
     bpf_ctx = BPF(text=b'BPF_HASH(blacklist, u32, u64); BPF_HASH(stats_map, u32, u64);') 
     
     blacklist = bpf_ctx.get_table("blacklist")
@@ -76,7 +76,7 @@ def imprimir_as_json(b):
 def load_whitelist(b):
     whitelist = b.get_table("whitelist")
     
-    # Lista de IPs autorizados (Sua máquina + Destinos permitidos)
+    # Lista de IPs autorizados 
     ips_autorizados = ["192.168.1.1"] 
     
     for ip in ips_autorizados:
@@ -84,7 +84,6 @@ def load_whitelist(b):
         whitelist[ctypes.c_uint32(ip_int)] = ctypes.c_ulonglong(1)
         print(f"✅ IP {ip} adicionado com sucesso na Whitelist!")
 
-# No seu main(), chame isso antes do loop:
 load_whitelist(b)
 
 # --- LOOP PRINCIPAL (LIMPEZA) ---
@@ -93,7 +92,7 @@ syn_map = b.get_table("syn_counters")
 wl = b.get_table("whitelist")
 stats_map = b.get_table("stats")
 
-import time # Garanta que o time esteja importado no topo
+import time
 
 last_report = time.time()
 last_cleanup = time.time()
@@ -118,21 +117,21 @@ try:
         current_time = time.time()
         
         if (current_time - last_report) > 5:
-            # CORREÇÃO: Usar 'stats' em vez de 'stats_map'
+        
             print(f"DEBUG: O mapa contém {len(stats)} chaves.")
 
             if len(stats) > 0:
                 print(f"\n--- [ {time.ctime()} ] DADOS ENCONTRADOS ---")
                 for key, value in stats.items():
                     print(f"DEBUG: Chave encontrada: {key.value}")
-                    # Agora o Python sabe que 'value' é do tipo Stats
+                  
                     print(f"Drop: {value.drop} | Pass: {value.passed} | Bloq: {value.ainc_blocked}")
             else:
                 print("\n⏳ [Status] Mapa carregado, mas ainda não recebeu nenhum dado.")
             
             last_report = current_time
         
-        time.sleep(1) # Opcional: evita uso excessivo de CPU no loop
+        time.sleep(1) 
 
 except KeyboardInterrupt:
     print("\n🛑 Parando Aincrad...")
