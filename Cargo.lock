@@ -37,6 +37,7 @@ dependencies = [
  "aincrad-common",
  "aya-ebpf",
  "aya-log-ebpf",
+ "network-types",
 ]
 
 [[package]]
@@ -318,6 +319,12 @@ dependencies = [
  "wasi",
  "windows-sys",
 ]
+
+[[package]]
+name = "network-types"
+version = "0.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41b13eba62f530cd2ea031938ac4472b9b649694baa1e587c2a2fadc07844d3c"
 
 [[package]]
 name = "num_enum"
