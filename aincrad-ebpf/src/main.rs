@@ -21,7 +21,6 @@ pub static PACKET_COUNT: HashMap<u32, u64> = HashMap::with_max_entries(1024, 0);
 #[map]
 pub static BLOCKLIST: HashMap<u32, u8> = HashMap::with_max_entries(1024, 0);
 
-
 #[xdp]
 pub fn aincrad_xdp(ctx: XdpContext) -> u32 {
     let data = ctx.data() as *const u8;
@@ -33,28 +32,28 @@ pub fn aincrad_xdp(ctx: XdpContext) -> u32 {
     }
 
     let eth = unsafe { &*(data as *const EthHdr) };
-    
-    let eth_type_ptr = core::ptr::addr_of!((*eth).ether_type) as *const u16;
-    let eth_type = u16::from_be(unsafe { core::ptr::read_unaligned(eth_type_ptr) });
+    let eth_type = eth.ether_type as u16;
 
-    if eth_type == 0x0800 { // IPv4
+    if eth_type == 0x0800 {
         let ip_size = core::mem::size_of::<Ipv4Hdr>();
         if unsafe { data.add(eth_size + ip_size) } <= data_end {
             let ip = unsafe { &*((data as *const u8).add(eth_size) as *const Ipv4Hdr) };
-            
-            let src_addr_ptr = core::ptr::addr_of!((*ip).src_addr) as *const u32;
-            let src_addr = u32::from_be(unsafe { core::ptr::read_unaligned(src_addr_ptr) });
+            let src_addr = u32::from_be(ip.src_addr);
             
             if unsafe { BLOCKLIST.get(&src_addr) }.is_some() {
-                return xdp_action::XDP_DROP;
+                return xdp_action::XDP_DROP; // Ponto de saída válido
             }
         }
     }
 
     let key = 0u32;
     unsafe {
-        let count = PACKET_COUNT.get(&key).copied().unwrap_or(0);
-        let _ = PACKET_COUNT.insert(&key, &(count + 1), 0);
+        if let Some(count) = PACKET_COUNT.get(&key) {
+            let new_count = *count + 1;
+            let _ = PACKET_COUNT.insert(&key, &new_count, 0);
+        } else {
+            let _ = PACKET_COUNT.insert(&key, &1u64, 0);
+        }
     }
 
     xdp_action::XDP_PASS

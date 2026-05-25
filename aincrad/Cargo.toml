@@ -1,9 +1,11 @@
 [package]
 name = "aincrad"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-aya = "0.12"
+aya = { version = "0.12", features = ["async_tokio"] }
+aya-log = "0.2"
 anyhow = "1.0"
 tokio = { version = "1.0", features = ["full"] }
+aincrad-common = { path = "../aincrad-common" }
