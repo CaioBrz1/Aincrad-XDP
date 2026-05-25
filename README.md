@@ -1,18 +1,18 @@
-Aincrad-XDP
+# Aincrad-XDP
 
-High-performance firewall based on XDP (eBPF), completely rewritten in Rust using the Aya framework.
- About the Project
+### High-performance firewall based on XDP (eBPF), completely rewritten in Rust using the Aya framework.
+ # About the Project
 
-Aincrad-XDP is a kernel-level firewall designed to process packets at the fastest networking layer (XDP - Express Data Path). We migrated from an initial prototype (Python/C) to a robust and secure architecture in Rust, ensuring native performance and memory safety.
- Technologies
+### Aincrad-XDP is a kernel-level firewall designed to process packets at the fastest networking layer (XDP - Express Data Path). We migrated from an initial prototype (Python/C) to a robust and secure architecture in Rust, ensuring native performance and memory safety.
+# Technologies
 
-#    Language: Rust (Edition 2024)
+####    Language: Rust (Edition 2024)
 
- #    eBPF Framework: Aya
+ ####    eBPF Framework: Aya
 
-  #    Infrastructure: XDP (eBPF)
+  ####    Infrastructure: XDP (eBPF)
 
-   #    Dependency Manager: Cargo
+   ####    Dependency Manager: Cargo
 
 📂 Repository Structure
 
@@ -22,9 +22,9 @@ Aincrad-XDP is a kernel-level firewall designed to process packets at the fastes
 
     /legacy: Original prototypes in Python and C (for historical reference).
 
- Prerequisites
+ # Prerequisites
 
-Ensure you have the following installed:
+### Ensure you have the following installed:
 
     Rust (Nightly, as Aya uses experimental features): rustup toolchain install nightly
 
@@ -32,9 +32,9 @@ Ensure you have the following installed:
 
     cargo-generate and the necessary Aya dependencies.
 
- How to Build and Run
+### How to Build and Run
 
-   # Build the Kernel (eBPF):
+   ### Build the Kernel (eBPF):
     Bash
 ```
     cargo +nightly build -p aincrad-ebpf --target bpfel-unknown-none -Z build-std=core
