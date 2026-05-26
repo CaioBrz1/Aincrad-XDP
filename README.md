@@ -4,6 +4,23 @@
  # About the Project
 
 ### Aincrad-XDP is a kernel-level firewall designed to process packets at the fastest networking layer (XDP - Express Data Path). We migrated from an initial prototype (Python/C) to a robust and secure architecture in Rust, ensuring native performance and memory safety.
+
+## Why Rust and Aya?
+
+We chose Rust and the Aya framework for Aincrad-XDP because modern network infrastructure demands a balance between absolute performance and extreme memory safety.
+
+### 1. Safety at the Kernel Level
+Unlike C, which is prone to memory leaks and buffer overflows, **Rust's borrow checker** guarantees memory safety at compile-time. By using Rust for our eBPF programs, we eliminate entire classes of bugs that could otherwise crash the kernel or create security vulnerabilities in the packet processing pipeline.
+
+### 2. Zero-Cost Abstractions
+Aya provides a idiomatic Rust interface to eBPF without the overhead of traditional C-based toolchains like `bcc` or `libbpf`. This allows us to write high-level, maintainable code that compiles down to highly optimized BPF bytecode, ensuring we stay within the strict instruction limits of the eBPF verifier.
+
+### 3. The "Orphan Rule" and Performance
+Working with Aya requires deep understanding of memory layout and trait implementation (such as `Pod`). By utilizing the **Newtype Pattern** and explicit memory management (`#[repr(C)]`), we explicitly control how data is passed between the kernel and user space. This ensures that our firewall operates with the minimum possible latency, effectively bypassing the overhead found in user-space packet filtering solutions.
+
+### 4. Modern Tooling
+By leveraging `cargo`, `build-std=core`, and the `nightly` toolchain, we gain access to a modern development experience—including robust dependency management and unit testing—that is historically absent from traditional kernel-level development.
+
 # Technologies
 
 ####    Language: Rust (Edition 2024)
@@ -13,6 +30,16 @@
   ####    Infrastructure: XDP (eBPF)
 
    ####    Dependency Manager: Cargo
+
+## The Aincrad Architecture: A "Modding" Approach
+
+To ensure extreme performance, we structured Aincrad-XDP like a custom game engine:
+
+* **`aincrad-common` (The Registry/Vanilla):** Contains the shared data structures and protocols. This is the "Vanilla" base that both the Kernel and User-Space must agree upon to communicate without corruption.
+* **`aincrad-ebpf` (The Mod):** This is the high-performance logic running directly in the Kernel. It’s where the "hot" network packet processing happens, applying rules to keep the server clean.
+* **`aincrad` (The ModLoader):** Our user-space controller. It loads the eBPF programs, manages the maps, and orchestrates the state. Just like a modloader, it bridges the raw "game" (Kernel) with the user interface and configuration management.
+
+This modularity allows us to keep the "Vanilla" (common) stable while we "mod" (optimize and extend) our network processing capabilities in real-time.
 
 📂 Repository Structure
 
