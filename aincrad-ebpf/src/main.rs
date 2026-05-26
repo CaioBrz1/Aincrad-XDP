@@ -1,6 +1,8 @@
 #![no_std]
 #![no_main]
 
+use network_types::tcp::TcpHdr;
+use network_types::ip::IpProto;
 use aincrad_common::ReputationRecord;
 use network_types::eth::EthHdr;
 use network_types::ip::Ipv4Hdr;
@@ -66,10 +68,62 @@ pub fn aincrad_xdp(ctx: XdpContext) -> u32 {
     return xdp_action::XDP_DROP;
 }
 
+    if ip.proto != IpProto::Tcp {
+    return xdp_action::XDP_DROP;
+}
+
+    let tcp_size = 20; 
+    if (data as usize + eth_size + ip_size + tcp_size) > data_end as usize {
+    return xdp_action::XDP_DROP; // Pacote malformado (TCP header truncado)
+}
+
+    let tcp = unsafe { &*((data as *const u8).add(eth_size + ip_size) as *const TcpHdr) };
+
+    if u16::from_be(tcp.dest) != 8080 {
+        return xdp_action::XDP_DROP;
+}
+
+    let payload_offset = eth_size + ip_size + tcp_size;
+    let payload = unsafe { (data as *const u8).add(payload_offset) };
+
+    if (payload as usize + 6) <= data_end as usize {
+    let chunk = unsafe { *(payload as *const [u8; 6]) };
+    
+    if &chunk == b"SELECT" || &chunk == b"UNION " {
+        return xdp_action::XDP_DROP;
+    }
+}
+
+    let payload_offset = eth_size + ip_size + tcp_size;
+    let payload = unsafe { (data as *const u8).add(payload_offset) };
+
+    const SCAN_LIMIT: usize = 128; // Limite fixo para o Verifier eBPF
+    let mut found = false;
+    let mut i: usize = 0;
+
+    while i < (SCAN_LIMIT - 6) {
+    if (payload as usize + i + 6) > data_end as usize {
+        break;
+    }
+
+    let p = unsafe { payload.add(i) as *const [u8; 6] };
+    let mut chunk = unsafe { *p };
+
+    for j in 0..6 {
+        chunk[j] |= 0x20;
+    }
+
+    if chunk == *b"select" || chunk == *b"union " {
+        found = true;
+        break;
+    }
+
+    i += 1;
+}
+
             let now = unsafe { bpf_ktime_get_ns() };
 
     let record_ptr = REPUTATION_MAP.get_ptr_mut(&src_addr);
-
     let record = match record_ptr {
     Some(ptr) => unsafe { &mut *ptr }, 
     None => {
