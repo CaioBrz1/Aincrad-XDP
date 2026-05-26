@@ -1,7 +1,8 @@
 [package]
 name = "aincrad-common"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-zerocopy = "0.7" 
+zerocopy = { version = "0.7.35", features = ["derive"] }
+aya-ebpf = { version = "0.1", default-features = false }

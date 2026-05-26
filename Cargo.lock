@@ -29,6 +29,7 @@ dependencies = [
 name = "aincrad-common"
 version = "0.1.0"
 dependencies = [
+ "aya-ebpf",
  "zerocopy 0.7.35",
 ]
 
