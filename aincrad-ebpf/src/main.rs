@@ -49,6 +49,23 @@ pub fn aincrad_xdp(ctx: XdpContext) -> u32 {
             
             // Leitura segura do IP
             let src_addr = u32::from_be(unsafe { core::ptr::read_unaligned(core::ptr::addr_of!(ip.src_addr)) });
+           
+            let my_safe_ip: u32 = 0xC0A80164; 
+
+            if src_addr == my_safe_ip {
+            return xdp_action::XDP_PASS;
+}
+
+    let packet_len = (data_end as usize - data as usize) as u32;
+    if packet_len < 64 {
+    if let Some(ptr) = REPUTATION_MAP.get_ptr_mut(&src_addr) {
+        let record = unsafe { &mut *ptr };
+        record.balance = 0;
+        record.ban_until = unsafe { bpf_ktime_get_ns() } + 3_600_000_000_000;
+    }
+    return xdp_action::XDP_DROP;
+}
+
             let now = unsafe { bpf_ktime_get_ns() };
 
     let record_ptr = REPUTATION_MAP.get_ptr_mut(&src_addr);
@@ -60,7 +77,7 @@ pub fn aincrad_xdp(ctx: XdpContext) -> u32 {
         let _ = REPUTATION_MAP.insert(&src_addr, &new_r, 0);
         match REPUTATION_MAP.get_ptr_mut(&src_addr) {
             Some(ptr) => unsafe { &mut *ptr },
-            None => return xdp_action::XDP_PASS, // Se falhar mesmo após inserir, passamos o pacote
+            None => return xdp_action::XDP_PASS, 
         }
     }
 };

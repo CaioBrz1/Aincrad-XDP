@@ -37,22 +37,23 @@ async fn main() -> Result<(), anyhow::Error> {
 
     println!("FIREWALL AINCRAD LIGADO! Monitorando...");
 
-let mut interval = time::interval(Duration::from_secs(5));
+let mut interval = time::interval(Duration::from_secs(30));
     loop {
         tokio::select! {
-            _ = interval.tick() => {
-                println!("--- Status da Tabela de Reputação ---");
-                for entry in reputation_map.iter() {
-                    match entry {
-                        Ok((key, pod_wrapper)) => {
-                            let record = pod_wrapper.0;
-                            println!("IP/Key: {:?}, Balance: {}, Ban: {}", 
-                                     key, record.balance, record.ban_until);
-                        }
-                        Err(e) => eprintln!("Erro ao ler entrada do mapa: {}", e),
-                    }
-                }
-            } 
+_ = interval.tick() => {
+    let mut banned_count = 0;
+    let mut total_records = 0;
+    for entry in reputation_map.iter() {
+        if let Ok((_, pod_wrapper)) = entry {
+            total_records += 1;
+            if pod_wrapper.0.ban_until > 0 {
+                banned_count += 1;
+            }
+        }
+    }
+    
+    println!("--- Status Aincrad | IPs Monitorados: {} | Bloqueados Agora: {} ---", total_records, banned_count);
+}
             
             _ = signal::ctrl_c() => {
                 println!("\nDesligando Aincrad...");
