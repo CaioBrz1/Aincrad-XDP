@@ -26,28 +26,26 @@
 
 ### Ensure you have the following installed:
 
-    Rust (Nightly, as Aya uses experimental features): rustup toolchain install nightly
-
-    bpfel-unknown-none target: rustup target add bpfel-unknown-none
-
-    cargo-generate and the necessary Aya dependencies.
+- Rust Nightly: `rustup toolchain install nightly`
+- Add bpf target: `rustup target add bpfel-unknown-none`
+- Rust Source: `rustup component add rust-src`
 
 ### How to Build and Run
 
    ### Build the Kernel (eBPF):
     Bash
 ```
-    cargo +nightly build -p aincrad-ebpf --target bpfel-unknown-none -Z build-std=core
+    cargo +nightly build -p aincrad-ebpf --target bpfel-unknown-none -Z build-std=core --release
 ```
 
 2. **Build the Loader (User Space):**
    ```bash
-   cargo build -p aincrad
+   cargo build -p aincrad --release
 ```
 ```
    # Execution:
 ```
-sudo ./target/debug/aincrad
+sudo ./target/release/aincrad
 ```
 
 ## 📜 License
