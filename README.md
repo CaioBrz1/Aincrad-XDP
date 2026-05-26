@@ -5,6 +5,37 @@
 
 ### Aincrad-XDP is a kernel-level firewall designed to process packets at the fastest networking layer (XDP - Express Data Path). We migrated from an initial prototype (Python/C) to a robust and secure architecture in Rust, ensuring native performance and memory safety.
 
+## Defensive Pipeline: The Aincrad Shield
+
+Aincrad-XDP employs a "Fail-Fast" layered processing pipeline. Before a packet is allowed to touch your application or service, it must survive four stages of high-speed inspection within the kernel. By dropping malicious traffic at the XDP layer, we prevent CPU exhaustion and resource abuse before it enters the networking stack.
+
+### 1. Tiny Packet Filter (Anti-Scraping/Empty Traffic)
+
+We immediately discard packets smaller than 64 bytes, filtering out malformed traffic and common "low-effort" network scans that attempt to probe for open ports without legitimate payloads.
+
+### 2. Protocol & Port Enforcement
+
+We enforce strict traffic rules at the L4 level.
+
+   TCP Protocol Enforcement: Only TCP traffic is permitted.
+
+   Port Binding: We enforce strict destination port checks (e.g., port 8080). Any traffic targeting unauthorized ports is dropped immediately, preventing lateral movement and reconnaissance.
+
+### 3. Deep Packet Inspection (DPI) - SQLi Protection
+
+To defend against injection attacks, we implement a high-performance Sliding Window Scanner.
+
+Case-Insensitive Signature Matching: We scan the first 128 bytes of the payload for signatures like SELECT or UNION using bitwise normalization ($|= 0x20$), catching obfuscated attempts without the performance overhead of Regex.Kernel-Safe: This is implemented as a bounded loop that ensures predictable CPU cycles, satisfying the eBPF verifier while maintaining speed.
+
+### 4. Rate Limiting (Token Bucket)
+
+After the packet is verified as "clean" and "authorized", we apply a Token Bucket algorithm.
+
+Each IP is tracked for its consumption rate.
+
+If a source exceeds its allocated "balance", it is temporarily banned, protecting the backend from volumetric DDoS and brute-force attempts.
+
+
 ## Why Rust and Aya?
 
 We chose Rust and the Aya framework for Aincrad-XDP because modern network infrastructure demands a balance between absolute performance and extreme memory safety.
