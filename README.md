@@ -1,3 +1,7 @@
+#### Status:  Under Active Development
+
+   ##### Benchmarking: Currently establishing the baseline environment (using pktgen). Metrics and optimization reports coming soon.
+
 # Aincrad-XDP
 
 ### High-performance firewall based on XDP (eBPF), completely rewritten in Rust using the Aya framework.
