@@ -1,3 +1,7 @@
+![Rust](https://img.shields.io/badge/rust-nightly-orange)
+![License](https://img.shields.io/badge/license-MIT-blue)
+![Status](https://img.shields.io/badge/status-active-green)
+
 #### Status:  Under Active Development
 
    ##### Benchmarking: Currently establishing the baseline environment (using pktgen). Metrics and optimization reports coming soon.
@@ -11,11 +15,11 @@
 
 ## Defensive Pipeline: The Aincrad Shield
 
-Aincrad-XDP employs a "Fail-Fast" layered processing pipeline. Before a packet is allowed to touch your application or service, it must survive four stages of high-speed inspection within the kernel. By dropping malicious traffic at the XDP layer, we prevent CPU exhaustion and resource abuse before it enters the networking stack.
+ Aincrad-XDP employs a "Fail-Fast" layered processing pipeline. Before a packet is allowed to touch your application or service, it must survive four stages of high-speed inspection within the kernel. By dropping malicious traffic at the XDP layer, we prevent CPU exhaustion and resource abuse before it enters the networking stack.
 
 ### 1. Tiny Packet Filter (Anti-Scraping/Empty Traffic)
 
-We immediately discard packets smaller than 64 bytes, filtering out malformed traffic and common "low-effort" network scans that attempt to probe for open ports without legitimate payloads.
+ We immediately discard packets smaller than 64 bytes, filtering out malformed traffic and common "low-effort" network scans that attempt to probe for open ports without legitimate payloads.
 
 ### 2. Protocol & Port Enforcement
 
@@ -29,7 +33,7 @@ We enforce strict traffic rules at the L4 level.
 
 To defend against injection attacks, we implement a high-performance Sliding Window Scanner.
 
-Case-Insensitive Signature Matching: We scan the first 128 bytes of the payload for signatures like SELECT or UNION using bitwise normalization ($|= 0x20$), catching obfuscated attempts without the performance overhead of Regex.Kernel-Safe: This is implemented as a bounded loop that ensures predictable CPU cycles, satisfying the eBPF verifier while maintaining speed.
+ Case-Insensitive Signature Matching: We scan the first 128 bytes of the payload for signatures like SELECT or UNION using bitwise normalization ($|= 0x20$), catching obfuscated attempts without the performance overhead of Regex.Kernel-Safe: This is implemented as a bounded loop that ensures predictable CPU cycles, satisfying the eBPF verifier while maintaining speed.
 
 ### 4. Rate Limiting (Token Bucket)
 
@@ -37,24 +41,28 @@ After the packet is verified as "clean" and "authorized", we apply a Token Bucke
 
 Each IP is tracked for its consumption rate.
 
-If a source exceeds its allocated "balance", it is temporarily banned, protecting the backend from volumetric DDoS and brute-force attempts.
+ If a source exceeds its allocated "balance", it is temporarily banned, protecting the backend from volumetric DDoS and brute-force attempts.
 
 
 ## Why Rust and Aya?
 
-We chose Rust and the Aya framework for Aincrad-XDP because modern network infrastructure demands a balance between absolute performance and extreme memory safety.
+ We chose Rust and the Aya framework for Aincrad-XDP because modern network infrastructure demands a balance between absolute performance and extreme memory safety.
 
 ### 1. Safety at the Kernel Level
-Unlike C, which is prone to memory leaks and buffer overflows, **Rust's borrow checker** guarantees memory safety at compile-time. By using Rust for our eBPF programs, we eliminate entire classes of bugs that could otherwise crash the kernel or create security vulnerabilities in the packet processing pipeline.
+ Unlike C, which is prone to memory leaks and buffer overflows, **Rust's borrow checker** guarantees memory safety at compile-time. By using Rust for our eBPF programs, we eliminate entire classes of bugs that could otherwise crash the kernel or create security vulnerabilities in the packet processing pipeline.
 
 ### 2. Zero-Cost Abstractions
-Aya provides a idiomatic Rust interface to eBPF without the overhead of traditional C-based toolchains like `bcc` or `libbpf`. This allows us to write high-level, maintainable code that compiles down to highly optimized BPF bytecode, ensuring we stay within the strict instruction limits of the eBPF verifier.
+ Aya provides a idiomatic Rust interface to eBPF without the overhead of traditional C-based toolchains like `bcc` or `libbpf`. This allows us to write high-level, maintainable code that compiles down to highly optimized BPF bytecode, ensuring we stay within the strict instruction limits of the eBPF verifier.
 
 ### 3. The "Orphan Rule" and Performance
-Working with Aya requires deep understanding of memory layout and trait implementation (such as `Pod`). By utilizing the **Newtype Pattern** and explicit memory management (`#[repr(C)]`), we explicitly control how data is passed between the kernel and user space. This ensures that our firewall operates with the minimum possible latency, effectively bypassing the overhead found in user-space packet filtering solutions.
+ Working with Aya requires deep understanding of memory layout and trait implementation (such as `Pod`). By utilizing the **Newtype Pattern** and explicit memory management (`#[repr(C)]`), we explicitly control how data is passed between the kernel and user space. This ensures that our firewall operates with the minimum possible latency, effectively bypassing the overhead found in user-space packet filtering solutions.
 
 ### 4. Modern Tooling
-By leveraging `cargo`, `build-std=core`, and the `nightly` toolchain, we gain access to a modern development experience—including robust dependency management and unit testing—that is historically absent from traditional kernel-level development.
+ By leveraging `cargo`, `build-std=core`, and the `nightly` toolchain, we gain access to a modern development experience—including robust dependency management and unit testing—that is historically absent from traditional kernel-level development.
+
+### Notes from the Trenches: The Price of Safety
+
+ Aincrad-XDP was built with Rust and Aya to achieve the pinnacle of memory safety and performance. However, this comes with a cost: the eBPF Verifier is a relentless gatekeeper. Unlike user-space development, kernel-level programming in Rust requires a paradigm shift. Navigating ownership, scope, and strict memory bounds while satisfying the Verifier’s constraints was the most challenging part of this project. It is a rigorous process, but the resulting "Fortress" of code is exactly what makes Aincrad-XDP both unbreakable and efficient.
 
 # Technologies
 
