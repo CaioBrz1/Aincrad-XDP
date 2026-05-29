@@ -6,9 +6,24 @@
 
 #### Status:  Under Active Development
 
-   ##### Benchmarking: Currently establishing the baseline environment (using pktgen). Metrics and optimization reports coming soon.
+##  Dev Log: Architectural Vanguard
 
-###### We are currently establishing performance baselines using pktgen and iperf3. Preliminary results will be published here soon. Our goal is to demonstrate Aincrad-XDP's capacity to filter 10Gbps+ traffic with minimal CPU utilization.
+<small>
+
+> *"Sometimes, you have to take one step back in development to take two steps forward in architecture."*
+
+Aincrad-XDP is currently at a critical transition point. To ensure this project remains the firewall reference it is, I am working intensely on the migration to **Aya 0.13.2**.
+
+This is not merely a dependency update; it is a fine-tuning of the system's core structure. I am resolving technical debt and refining abstractions to ensure that our security remains impenetrable.
+
+**Status:** Actively in development. Commits will resume once the new foundation is 100% calibrated.
+
+</small>
+
+
+   ## Benchmarking: Currently establishing the baseline environment (using pktgen). Metrics and optimization reports coming soon.
+
+We are currently establishing performance baselines using pktgen and iperf3. Preliminary results will be published here soon. Our goal is to demonstrate Aincrad-XDP's capacity to filter 10Gbps+ traffic with minimal CPU utilization.
 
 # Aincrad-XDP
 
