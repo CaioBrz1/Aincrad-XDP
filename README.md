@@ -5,17 +5,27 @@
 
 > <small>This project is built on the shoulders of giants. Special thanks to the aya-rs community for the revolutionary framework that makes it possible to write high-performance eBPF in Rust.</small>
 
-##  Dev Log: Architectural Vanguard
+## Dev Log: Architectural Vanguard
 
 <small>
 
 > *"Sometimes, you have to take one step back in development to take two steps forward in architecture."*
 
-Aincrad-XDP is currently at a critical transition point. To ensure this project remains the firewall reference it is, I am working intensely on the migration to **Aya 0.13.2**.
+Aincrad-XDP is currently at a critical transition point. To ensure this project remains the firewall reference it is, I have spent the last cycle performing a deep-system migration to **Aya 0.13.2**.
 
-This is not merely a dependency update; it is a fine-tuning of the system's core structure. I am resolving technical debt and refining abstractions to ensure that our security remains impenetrable.
+This is not merely a dependency update; it was a deliberate **reforging of the system's core**. I have been actively dismantling the technical debt accumulated from the rapid evolution of the eBPF ecosystem, refining abstractions to ensure that our security remains truly impenetrable.
 
-**Status:** Actively in development. Commits will resume once the new foundation is 100% calibrated.
+### The Current State of the Forge
+
+*   **Refactoring:** Removed legacy macro-based boilerplate in favor of the clean, type-safe structures introduced in the latest Aya versions.
+*   **Kernel Residency:** The bytecode is now successfully compiled and verified by the kernel. The foundation is set.
+*   **The "Attach" Phase (In Progress):** We are currently bridging the gap between loading the program and hooking it to the network interface. In the eBPF lifecycle, residency (Load) is only half the battle; activation (Attach) is where the firewall actually begins to breathe.
+
+**Status:** Actively in development. 
+
+The code is being calibrated. My current focus is implementing the lifecycle management of our XDP hook, ensuring that the transition from user-space to kernel-space is not just functional, but atomic and resilient.
+
+Commits will resume at full velocity once the new foundation is 100% calibrated.
 
 </small>
 
