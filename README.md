@@ -158,9 +158,5 @@ This modularity allows us to keep the "Vanilla" (common) stable while we "mod" (
 sudo ./target/release/aincrad
 ```
 
-### Acknowledgement
-
- This project is built on the shoulders of giants. Special thanks to the aya-rs community for the revolutionary framework that makes high-performance eBPF development in Rust possible.
-
 ## 📜 License
 Distributed under the MIT License. See `LICENSE` for more details.
