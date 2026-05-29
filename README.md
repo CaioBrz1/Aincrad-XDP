@@ -4,8 +4,6 @@
 
 > <small>This project is built on the shoulders of giants. Special thanks to the aya-rs community for the revolutionary framework that makes it possible to write high-performance eBPF in Rust.</small>
 
-#### Status:  Under Active Development
-
 ##  Dev Log: Architectural Vanguard
 
 <small>
