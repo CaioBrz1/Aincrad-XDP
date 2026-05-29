@@ -2,9 +2,13 @@
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Status](https://img.shields.io/badge/status-active-green)
 
+> <small>This project is built on the shoulders of giants. Special thanks to the aya-rs community for the revolutionary framework that makes it possible to write high-performance eBPF in Rust.</small>
+
 #### Status:  Under Active Development
 
    ##### Benchmarking: Currently establishing the baseline environment (using pktgen). Metrics and optimization reports coming soon.
+
+###### We are currently establishing performance baselines using pktgen and iperf3. Preliminary results will be published here soon. Our goal is to demonstrate Aincrad-XDP's capacity to filter 10Gbps+ traffic with minimal CPU utilization.
 
 # Aincrad-XDP
 
@@ -64,6 +68,42 @@ Each IP is tracked for its consumption rate.
 
  Aincrad-XDP was built with Rust and Aya to achieve the pinnacle of memory safety and performance. However, this comes with a cost: the eBPF Verifier is a relentless gatekeeper. Unlike user-space development, kernel-level programming in Rust requires a paradigm shift. Navigating ownership, scope, and strict memory bounds while satisfying the Verifier’s constraints was the most challenging part of this project. It is a rigorous process, but the resulting "Fortress" of code is exactly what makes Aincrad-XDP both unbreakable and efficient.
 
+### Debugging & Observability
+
+As we operate within the Kernel, we do not have access to standard println! macros.
+
+   Logging: We utilize the aya-log crate to stream logs from the kernel to user-space.
+
+   Map Inspection: Aincrad exports its internal state (packet counters, ban tables) via eBPF Maps. You can inspect the firewall status in real-time using tools such as bpftool:
+    
+
+    sudo bpftool map show
+
+### Known Limitations
+
+Like any advanced eBPF project, we are subject to the constraints of the eBPF Verifier:
+
+   Bounded Loops: All loops must have fixed bounds to prevent deadlocks within the Kernel.
+
+   Memory Access Verification: Any pointer access outside defined memory limits will result in program load failure.
+
+### Contributing
+
+Contributions are welcome! If you wish to optimize the packet parser or add new security protocols:
+
+Fork the repository.
+
+ Create a feature branch (git checkout -b feature/name-of-feature).
+
+  Run the tests (cargo test).
+
+   Submit a Pull Request.
+
+### Security Disclaimer
+
+This is an experimental firewall. Although Aincrad-XDP leverages Rust's memory safety, use in production environments without independent code auditing is not recommended. Use at your own risk.
+
+
 # Technologies
 
 ####    Language: Rust (Edition 2024)
@@ -117,6 +157,10 @@ This modularity allows us to keep the "Vanilla" (common) stable while we "mod" (
 ```
 sudo ./target/release/aincrad
 ```
+
+### Acknowledgement
+
+ This project is built on the shoulders of giants. Special thanks to the aya-rs community for the revolutionary framework that makes high-performance eBPF development in Rust possible.
 
 ## 📜 License
 Distributed under the MIT License. See `LICENSE` for more details.
