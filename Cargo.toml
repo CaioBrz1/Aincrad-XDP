@@ -6,3 +6,12 @@ members = [
 ]
 resolver = "2"
 
+[workspace.dependencies]
+zerocopy = { version = "0.7.35", default-features = false, features = ["derive", "simd"] }
+
+[patch.crates-io]
+aya = { git = "https://github.com/aya-rs/aya", branch = "main" }
+aya-ebpf = { git = "https://github.com/aya-rs/aya", branch = "main" }
+aya-log = { git = "https://github.com/aya-rs/aya", branch = "main" }
+aya-log-ebpf = { git = "https://github.com/aya-rs/aya", branch = "main" }
+

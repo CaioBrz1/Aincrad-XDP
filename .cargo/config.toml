@@ -1,0 +1,8 @@
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+
+[build]
+rustflags = ["-C", "panic=abort"]

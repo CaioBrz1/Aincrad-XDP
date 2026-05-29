@@ -1,0 +1,11 @@
+[build]
+target = "bpfel-unknown-none"
+
+[unstable]
+build-std = ["core", "alloc"]
+
+[target.bpfel-unknown-none]
+rustflags = [
+    "-C", "link-arg=-nostdlib",
+    "-C", "embed-bitcode=yes"
+]

@@ -4,8 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-aya = { version = "0.12", features = ["async_tokio"] }
+aya = { git = "https://github.com/aya-rs/aya", branch = "main" }
 aya-log = "0.2"
 anyhow = "1.0"
 tokio = { version = "1.0", features = ["full"] }
 aincrad-common = { path = "../aincrad-common" }
+aincrad-ebpf = { path = "../aincrad-ebpf" }
+bytemuck = { version = "1.14", features = ["derive"] }
