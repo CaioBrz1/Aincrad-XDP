@@ -1,6 +1,7 @@
 ![Rust](https://img.shields.io/badge/rust-nightly-orange)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Status](https://img.shields.io/badge/status-active-green)
+[![Built with Aya](https://img.shields.io/badge/Built%20with-Aya-blue?logo=rust)](https://aya-rs.dev/)
 
 > <small>This project is built on the shoulders of giants. Special thanks to the aya-rs community for the revolutionary framework that makes it possible to write high-performance eBPF in Rust.</small>
 
