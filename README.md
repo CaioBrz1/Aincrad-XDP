@@ -132,7 +132,7 @@ This is an experimental firewall. Although Aincrad-XDP leverages Rust's memory s
 
 ####    Language: Rust (Edition 2024)
 
- ####    eBPF Framework: Aya
+ ####    eBPF Framework: Aya 0.13.2
 
   ####    Infrastructure: XDP (eBPF)
 
