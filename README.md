@@ -17,7 +17,8 @@ This is not merely a dependency update; it was a deliberate **reforging of the s
 
 ### The Current State of the Forge
 
-*   **Refactoring:** Removed legacy macro-based boilerplate in favor of the clean, type-safe structures introduced in the latest Aya versions.
+*   **Refactoring & Macros:** Stripped away legacy boilerplate. The new Aya 0.13.2 structures demand higher type-safety, which I’ve implemented across the board.
+*   **Memory Layout (Pod & Zerocopy):** Standardized data exchange using explicit byte-arrays. Every byte is now accounted for.
 *   **Kernel Residency:** The bytecode is now successfully compiled and verified by the kernel. The foundation is set.
 *   **The "Attach" Phase (In Progress):** We are currently bridging the gap between loading the program and hooking it to the network interface. In the eBPF lifecycle, residency (Load) is only half the battle; activation (Attach) is where the firewall actually begins to breathe.
 
