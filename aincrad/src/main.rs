@@ -1,5 +1,6 @@
 use aya::maps::{PerCpuHashMap, MapData};
 use aya::programs::{Xdp, XdpMode};
+use aya::programs::xdp::XdpLinkId;
 use aya::Ebpf;
 use std::convert::TryInto;
 use tokio::{signal, time, time::Duration};
@@ -11,7 +12,7 @@ pub struct ReputationRecord {
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-    let reputation_map = init_ebpf()?;
+    let (reputation_map, _link) = init_ebpf()?;
 
     println!("FIREWALL AINCRAD LIGADO! Monitorando...");
 
@@ -56,8 +57,7 @@ fn bytes_to_record(bytes: &[u8; 24]) -> ReputationRecord {
     ReputationRecord { ban_until }
 }
 
-fn init_ebpf() -> Result<PerCpuHashMap<MapData, u32, [u8; 24]>, anyhow::Error> {
-
+fn init_ebpf() -> Result<(PerCpuHashMap<MapData, u32, [u8; 24]>, XdpLinkId), anyhow::Error> {
 
 let mut bpf = Ebpf::load(aya::include_bytes_aligned!(
     "../../target/bpfel-unknown-none/release/libaincrad_ebpf.so"
@@ -69,12 +69,13 @@ let mut bpf = Ebpf::load(aya::include_bytes_aligned!(
         .try_into()?;
     
     program.load()?;
-    program.attach("enp3s0", XdpMode::default())?;
+
+let link = program.attach("enp3s0", XdpMode::default())?;
 
     let map = bpf.take_map("REPUTATION_MAP")
         .ok_or_else(|| anyhow::anyhow!("Mapa não encontrado"))?;
 
     let reputation_map = PerCpuHashMap::try_from(map)?;
 
-    Ok(reputation_map)
+    Ok((reputation_map,link))
 }
