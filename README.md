@@ -5,17 +5,28 @@
 
 > <small>This project is built on the shoulders of giants. Special thanks to the aya-rs community for the revolutionary framework that makes it possible to write high-performance eBPF in Rust.</small>
 
-##  Dev Log: Architectural Vanguard
+## Dev Log: Architectural Vanguard
 
 <small>
 
 > *"Sometimes, you have to take one step back in development to take two steps forward in architecture."*
 
-Aincrad-XDP is currently at a critical transition point. To ensure this project remains the firewall reference it is, I am working intensely on the migration to **Aya 0.13.2**.
+Aincrad-XDP is currently at a critical transition point. To ensure this project remains the firewall reference it is, I have spent the last cycle performing a deep-system migration to **Aya 0.13.2**.
 
-This is not merely a dependency update; it is a fine-tuning of the system's core structure. I am resolving technical debt and refining abstractions to ensure that our security remains impenetrable.
+This is not merely a dependency update; it was a deliberate **reforging of the system's core**. I have been actively dismantling the technical debt accumulated from the rapid evolution of the eBPF ecosystem, refining abstractions to ensure that our security remains truly impenetrable.
 
-**Status:** Actively in development. Commits will resume once the new foundation is 100% calibrated.
+### The Current State of the Forge
+
+*   **Refactoring & Macros:** Stripped away legacy boilerplate. The new Aya 0.13.2 structures demand higher type-safety, which I’ve implemented across the board.
+*   **Memory Layout (Pod & Zerocopy):** Standardized data exchange using explicit byte-arrays. Every byte is now accounted for.
+*   **Kernel Residency:** The bytecode is now successfully compiled and verified by the kernel. The foundation is set.
+*   **The "Attach" Phase (In Progress):** We are currently bridging the gap between loading the program and hooking it to the network interface. In the eBPF lifecycle, residency (Load) is only half the battle; activation (Attach) is where the firewall actually begins to breathe.
+
+**Status:** Actively in development. 
+
+The code is being calibrated. My current focus is implementing the lifecycle management of our XDP hook, ensuring that the transition from user-space to kernel-space is not just functional, but atomic and resilient.
+
+Commits will resume at full velocity once the new foundation is 100% calibrated.
 
 </small>
 
@@ -35,32 +46,32 @@ This is not merely a dependency update; it is a fine-tuning of the system's core
 
  Aincrad-XDP employs a "Fail-Fast" layered processing pipeline. Before a packet is allowed to touch your application or service, it must survive four stages of high-speed inspection within the kernel. By dropping malicious traffic at the XDP layer, we prevent CPU exhaustion and resource abuse before it enters the networking stack.
 
-### 1. Tiny Packet Filter (Anti-Scraping/Empty Traffic)
+## Pipeline Details
 
- We immediately discard packets smaller than 64 bytes, filtering out malformed traffic and common "low-effort" network scans that attempt to probe for open ports without legitimate payloads.
+ ###  1. Tiny Packet Filter (Anti-Scraping):
 
-### 2. Protocol & Port Enforcement
+   *Status: Operational.*
 
-We enforce strict traffic rules at the L4 level.
+  #### Logic: Discards packets < 64 bytes at the XDP hook. Effectively filters basic network scans and malformed traffic before stack allocation.
 
-   TCP Protocol Enforcement: Only TCP traffic is permitted.
+ ###   2. Protocol & Port Enforcement:
 
-   Port Binding: We enforce strict destination port checks (e.g., port 8080). Any traffic targeting unauthorized ports is dropped immediately, preventing lateral movement and reconnaissance.
+   *Status: Operational.*
 
-### 3. Deep Packet Inspection (DPI) - SQLi Protection
+ ####  Logic: Strictly enforces TCP at L4. Non-compliant traffic is dropped immediately. Port enforcement logic is currently static (hardcoded for the baseline).
 
-To defend against injection attacks, we implement a high-performance Sliding Window Scanner.
+ ###   3. Deep Packet Inspection (DPI) - SQLi Protection:
 
- Case-Insensitive Signature Matching: We scan the first 128 bytes of the payload for signatures like SELECT or UNION using bitwise normalization ($|= 0x20$), catching obfuscated attempts without the performance overhead of Regex.Kernel-Safe: This is implemented as a bounded loop that ensures predictable CPU cycles, satisfying the eBPF verifier while maintaining speed.
+   *Status: [WIP - Refactoring for 0.13.2]*
 
-### 4. Rate Limiting (Token Bucket)
+   ####     Design: High-performance sliding window scanner.
 
-After the packet is verified as "clean" and "authorized", we apply a Token Bucket algorithm.
+   ####     Technical Constraint: Implemented as a bounded loop to satisfy the eBPF Verifier. Using bitwise normalization (|= 0x20) for case-insensitive matching to avoid regex overhead.
 
-Each IP is tracked for its consumption rate.
+  ###  4. Rate Limiting (Token Bucket):
 
- If a source exceeds its allocated "balance", it is temporarily banned, protecting the backend from volumetric DDoS and brute-force attempts.
-
+   *Status: [Planned]*
+  #### Design: Token bucket algorithm using Per-CPU Maps for global rate limiting, minimizing lock contention at 10Gbps+ speeds.
 
 ## Why Rust and Aya?
 
@@ -122,7 +133,7 @@ This is an experimental firewall. Although Aincrad-XDP leverages Rust's memory s
 
 ####    Language: Rust (Edition 2024)
 
- ####    eBPF Framework: Aya
+ ####    eBPF Framework: Aya 0.13.2
 
   ####    Infrastructure: XDP (eBPF)
 
