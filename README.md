@@ -46,32 +46,32 @@ Commits will resume at full velocity once the new foundation is 100% calibrated.
 
  Aincrad-XDP employs a "Fail-Fast" layered processing pipeline. Before a packet is allowed to touch your application or service, it must survive four stages of high-speed inspection within the kernel. By dropping malicious traffic at the XDP layer, we prevent CPU exhaustion and resource abuse before it enters the networking stack.
 
-### 1. Tiny Packet Filter (Anti-Scraping/Empty Traffic)
+## Pipeline Details
 
- We immediately discard packets smaller than 64 bytes, filtering out malformed traffic and common "low-effort" network scans that attempt to probe for open ports without legitimate payloads.
+ ###  1. Tiny Packet Filter (Anti-Scraping):
 
-### 2. Protocol & Port Enforcement
+   *Status: Operational.*
 
-We enforce strict traffic rules at the L4 level.
+  #### Logic: Discards packets < 64 bytes at the XDP hook. Effectively filters basic network scans and malformed traffic before stack allocation.
 
-   TCP Protocol Enforcement: Only TCP traffic is permitted.
+ ###   2. Protocol & Port Enforcement:
 
-   Port Binding: We enforce strict destination port checks (e.g., port 8080). Any traffic targeting unauthorized ports is dropped immediately, preventing lateral movement and reconnaissance.
+   *Status: Operational.*
 
-### 3. Deep Packet Inspection (DPI) - SQLi Protection
+ ####  Logic: Strictly enforces TCP at L4. Non-compliant traffic is dropped immediately. Port enforcement logic is currently static (hardcoded for the baseline).
 
-To defend against injection attacks, we implement a high-performance Sliding Window Scanner.
+ ###   3. Deep Packet Inspection (DPI) - SQLi Protection:
 
- Case-Insensitive Signature Matching: We scan the first 128 bytes of the payload for signatures like SELECT or UNION using bitwise normalization ($|= 0x20$), catching obfuscated attempts without the performance overhead of Regex.Kernel-Safe: This is implemented as a bounded loop that ensures predictable CPU cycles, satisfying the eBPF verifier while maintaining speed.
+   *Status: [WIP - Refactoring for 0.13.2]*
 
-### 4. Rate Limiting (Token Bucket)
+   ####     Design: High-performance sliding window scanner.
 
-After the packet is verified as "clean" and "authorized", we apply a Token Bucket algorithm.
+   ####     Technical Constraint: Implemented as a bounded loop to satisfy the eBPF Verifier. Using bitwise normalization (|= 0x20) for case-insensitive matching to avoid regex overhead.
 
-Each IP is tracked for its consumption rate.
+  ###  4. Rate Limiting (Token Bucket):
 
- If a source exceeds its allocated "balance", it is temporarily banned, protecting the backend from volumetric DDoS and brute-force attempts.
-
+   *Status: [Planned]*
+  #### Design: Token bucket algorithm using Per-CPU Maps for global rate limiting, minimizing lock contention at 10Gbps+ speeds.
 
 ## Why Rust and Aya?
 
