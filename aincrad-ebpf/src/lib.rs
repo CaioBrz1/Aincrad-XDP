@@ -100,12 +100,17 @@ fn try_xdp_firewall(ctx: &XdpContext) -> Result<u32, u32> {
     }
 
     let dest_port = u16::from_be(unsafe { *((tcp_start + 2) as *const u16) });
-    if dest_port == 8080 {
+    if dest_port != 8080 {
         return Ok(xdp_action::XDP_DROP);
     }
 
     let doff_byte = unsafe { *((tcp_start + 12) as *const u8) };
     let tcp_hlen = ((doff_byte >> 4) as usize) * 4; 
+
+    if tcp_start + tcp_hlen > data_end {
+        return Ok(xdp_action::XDP_PASS);
+    }
+
 
     let mut current_offset = 14 + ip_hdr_len + tcp_hlen;
 
