@@ -60,18 +60,25 @@ Commits will resume at full velocity once the new foundation is 100% calibrated.
 
  ####  Logic: Strictly enforces TCP at L4. Non-compliant traffic is dropped immediately. Port enforcement logic is currently static (hardcoded for the baseline).
 
- ###   3. Deep Packet Inspection (DPI) - SQLi Protection:
+### 3. Deep Packet Inspection (DPI) - SQLi Protection:
+   Status: Operational.
 
-   *Status: [WIP - Refactoring for 0.13.2]*
-
-   ####     Design: High-performance sliding window scanner.
-
-   ####     Technical Constraint: Implemented as a bounded loop to satisfy the eBPF Verifier. Using bitwise normalization (|= 0x20) for case-insensitive matching to avoid regex overhead.
+####  Design: High-performance static window scanner with dynamic protocol parsing.
+####  Technical Constraints & Optimizations:
+   * Implemented via strict bounded loop (`for _ in 0..128`) to achieve full compliance with the eBPF Verifier without compromising throughput.
+   * Employs bitwise normalization (`|= 0x20202020` / byte-level masking) for efficient, zero-overhead, case-insensitive signature matching (`sele`, `ping`).
+   * Features Dynamic Header Parsing (extracting IPv4 IHL and TCP Data Offset) to isolate and inspect the application payload with surgical precision, ignoring variable transport-layer options.
+   * Integrated with a stateful REPUTATION_MAP for immediate, low-overhead driver-level mitigation (`XDP_DROP`) of malicious actors.
 
   ###  4. Rate Limiting (Token Bucket):
 
-   *Status: [Planned]*
-  #### Design: Token bucket algorithm using Per-CPU Maps for global rate limiting, minimizing lock contention at 10Gbps+ speeds.
+   *Status: Operational.*
+
+#### Design: Stateless Token Bucket algorithm utilizing Per-CPU Hash Maps to achieve lockless execution at 10Gbps+ line rates.
+#### Technical Constraints & Optimizations:
+* Eliminates lock contention by allocating independent bucket structures per CPU core, ensuring zero-overhead tracking under massive multi-core workloads.
+* Implements fractional token regeneration using low-overhead integer mathematics via `bpf_ktime_get_ns()`, avoiding non-supported floating-point operations in eBPF.
+* Short-circuits malicious/flood traffic early in the pipeline (`XDP_DROP`), preserving CPU cycles and system stability.
 
 ## Why Rust and Aya?
 
@@ -93,16 +100,6 @@ Commits will resume at full velocity once the new foundation is 100% calibrated.
 
  Aincrad-XDP was built with Rust and Aya to achieve the pinnacle of memory safety and performance. However, this comes with a cost: the eBPF Verifier is a relentless gatekeeper. Unlike user-space development, kernel-level programming in Rust requires a paradigm shift. Navigating ownership, scope, and strict memory bounds while satisfying the Verifier’s constraints was the most challenging part of this project. It is a rigorous process, but the resulting "Fortress" of code is exactly what makes Aincrad-XDP both unbreakable and efficient.
 
-### Debugging & Observability
-
-As we operate within the Kernel, we do not have access to standard println! macros.
-
-   Logging: We utilize the aya-log crate to stream logs from the kernel to user-space.
-
-   Map Inspection: Aincrad exports its internal state (packet counters, ban tables) via eBPF Maps. You can inspect the firewall status in real-time using tools such as bpftool:
-    
-
-    sudo bpftool map show
 
 ### Known Limitations
 
@@ -111,18 +108,6 @@ Like any advanced eBPF project, we are subject to the constraints of the eBPF Ve
    Bounded Loops: All loops must have fixed bounds to prevent deadlocks within the Kernel.
 
    Memory Access Verification: Any pointer access outside defined memory limits will result in program load failure.
-
-### Contributing
-
-Contributions are welcome! If you wish to optimize the packet parser or add new security protocols:
-
-Fork the repository.
-
- Create a feature branch (git checkout -b feature/name-of-feature).
-
-  Run the tests (cargo test).
-
-   Submit a Pull Request.
 
 ### Security Disclaimer
 
@@ -205,7 +190,7 @@ ip link show dev enp3s0
 ```
 
 ### Expected Output (XDP Active at the Edge):
-Plaintext
+
 
 `2: enp3s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 xdpgeneric qdisc fq_codel state UP mode DEFAULT group default qlen 1000
     link/ether 00:e0:4c:ab:57:de brd ff:ff:ff:ff:ff:ff
@@ -225,16 +210,16 @@ Plaintext:
 
 
 ```
---- Status Aincrad | IPs: 0 | Bloqueados: 0 ---
---- Status Aincrad | IPs: 2 | Bloqueados: 2 ---
---- Status Aincrad | IPs: 2 | Bloqueados: 0 ---
---- Status Aincrad | IPs: 4 | Bloqueados: 2 ---
---- Status Aincrad | IPs: 4 | Bloqueados: 2 ---
+--- Status Aincrad | IPs: 0 | Blocked: 0 ---
+--- Status Aincrad | IPs: 2 | Blocked: 2 ---
+--- Status Aincrad | IPs: 2 | Blocked: 0 ---
+--- Status Aincrad | IPs: 4 | Blocked: 2 ---
+--- Status Aincrad | IPs: 4 | Blocked: 2 ---
 ```
 
 ####    IPs: Number of unique addresses identified passing through the interface.
 
-####    Bloqueados (Blocked): Number of packets dropped at lightning speed directly at the network interface card (NIC) driver level.
+####    Blocked: Number of packets dropped at lightning speed directly at the network interface card (NIC) driver level.
 
 ## 📜 License
 Distributed under the MIT License. See `LICENSE` for more details.

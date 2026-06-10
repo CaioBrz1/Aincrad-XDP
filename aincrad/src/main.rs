@@ -1,4 +1,4 @@
-use aya::maps::{PerCpuHashMap, MapData};
+use aya::maps::{MapData, HashMap};
 use aya::programs::{Xdp, XdpMode};
 use aya::programs::xdp::XdpLinkId;
 use aya::Ebpf;
@@ -14,7 +14,7 @@ pub struct ReputationRecord {
 async fn main() -> Result<(), anyhow::Error> {
     let (_bpf, reputation_map, _link) = init_ebpf()?;
 
-    println!("FIREWALL AINCRAD LIGADO! Monitorando...");
+    println!("AINCRAD FIREWALL ACTIVATED! Monitoring network layers...");
 
     let mut interval = time::interval(Duration::from_secs(30));
     loop {
@@ -24,26 +24,18 @@ async fn main() -> Result<(), anyhow::Error> {
                 let mut total_records = 0;
 
                 for entry in reputation_map.iter() {
-                    if let Ok((_key, records)) = entry {
+                    if let Ok((_key, raw_bytes)) = entry {
                         total_records += 1;
                         
-                        let ban_until = records
-                            .iter()
-                            .map(|raw_bytes| {
+                                let record = bytes_to_record(&raw_bytes);
 
-                                let record = bytes_to_record(raw_bytes);
-                                record.ban_until
-                            })
-                            .max()
-                            .unwrap_or(0);
-
-                        if ban_until > 0 {
+                        if record.ban_until > 0 {
                             banned_count += 1;
                         }
                     }
                 }
 
-                println!("--- Status Aincrad | IPs: {} | Bloqueados: {} ---", total_records, banned_count);
+                println!("--- Status Aincrad | IPs: {} | Blocked: {} ---", total_records, banned_count);
             }
             _ = signal::ctrl_c() => { break; }
         }
@@ -57,7 +49,7 @@ fn bytes_to_record(bytes: &[u8; 24]) -> ReputationRecord {
     ReputationRecord { ban_until }
 }
 
-fn init_ebpf() -> Result<(aya::Ebpf, PerCpuHashMap<MapData, u32, [u8; 24]>, XdpLinkId), anyhow::Error> {
+fn init_ebpf() -> Result<(aya::Ebpf, HashMap<MapData, u32, [u8; 24]>, XdpLinkId), anyhow::Error> {
 
 let mut bpf = Ebpf::load(aya::include_bytes_aligned!(
     "../../target/bpfel-unknown-none/release/libaincrad_ebpf.so"
@@ -75,7 +67,7 @@ let mut bpf = Ebpf::load(aya::include_bytes_aligned!(
     let map = bpf.take_map("REPUTATION_MAP")
         .ok_or_else(|| anyhow::anyhow!("Mapa não encontrado"))?;
 
-    let reputation_map = PerCpuHashMap::try_from(map)?;
+    let reputation_map = HashMap::try_from(map)?;
 
     Ok((bpf, reputation_map, link))
 }

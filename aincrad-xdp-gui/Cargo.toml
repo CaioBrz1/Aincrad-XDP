@@ -1,0 +1,11 @@
+[package]
+name = "aincrad-xdp-gui"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+raylib = "5.0"
+aya = { git = "https://github.com/aya-rs/aya", branch = "main", features = ["async_tokio"] }
+
+tokio = { version = "1", features = ["full"] }
+chrono = "0.4"

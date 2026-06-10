@@ -12,11 +12,22 @@ use aya_ebpf::{
 };
 use core::mem;
 use aincrad_common::ReputationRecord;
-use aya_log_ebpf::info;
 
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct RateLimitBucket {
+    pub tokens: u32,
+    pub _padding: u32,
+    pub last_updated: u64,
+}
 
-#[map(name = "REPUTATION_MAP")]
-static REPUTATION_MAP: PerCpuHashMap<u32, ReputationRecord> = PerCpuHashMap::with_max_entries(1024, 0);
+#[map]
+static RATE_LIMIT_MAP: PerCpuHashMap<u32, RateLimitBucket> =
+    PerCpuHashMap::with_max_entries(10240, 0);
+
+#[map]
+static REPUTATION_MAP: HashMap<u32, ReputationRecord> = 
+    HashMap::with_max_entries(1024, 0);
 
 #[repr(C)]
 pub struct EthHdr {
@@ -147,37 +158,55 @@ fn try_xdp_firewall(ctx: &XdpContext) -> Result<u32, u32> {
         current_offset += 1;
     }
 
-    let mut record = match unsafe { REPUTATION_MAP.get(&src_addr) } {
-        Some(existing_record) => *existing_record,
-        None => ReputationRecord {
-            balance: 100,
+
+    if let Some(global_record) = unsafe { REPUTATION_MAP.get(&src_addr) } {
+        if now < global_record.ban_until {
+            return Ok(xdp_action::XDP_DROP);
+        }
+    }
+
+    const TOKENS_REGEN_PER_NS: u64 = 10_000_000; // 1 token a cada 10ms
+    const MAX_TOKENS: u32 = 100;
+
+    let mut bucket = match unsafe { RATE_LIMIT_MAP.get(&src_addr) } {
+        Some(bucket_ptr) => *bucket_ptr, 
+        None => RateLimitBucket {
+            tokens: MAX_TOKENS,
             _padding: 0,
-            ban_until: 0,
             last_updated: now,
         },
     };
 
-    if now < record.ban_until {
+    let elapsed = now.saturating_sub(bucket.last_updated);
+    let tokens_to_add = (elapsed / TOKENS_REGEN_PER_NS) as u32;
+
+    if tokens_to_add > 0 {
+        bucket.tokens = core::cmp::min(MAX_TOKENS, bucket.tokens + tokens_to_add);
+        bucket.last_updated = now;
+    }
+
+    if bucket.tokens > 0 {
+        bucket.tokens -= 1;
+        let _ = RATE_LIMIT_MAP.insert(&src_addr, &bucket, 0);
+    } else {
+        let _ = RATE_LIMIT_MAP.insert(&src_addr, &bucket, 0);
         return Ok(xdp_action::XDP_DROP);
     }
 
     if found {
-        record.balance = record.balance.saturating_sub(10);
-        
-        if record.balance == 0 {
-            record.ban_until = now + 60_000_000_000; 
-        }
+        let global_ban = ReputationRecord {
+            balance: 0,
+            _padding: 0,
+            ban_until: now + 60_000_000_000,
+            last_updated: now,
+        };
 
-        let _ = REPUTATION_MAP.insert(&src_addr, &record, 0);
+        let _ = REPUTATION_MAP.insert(&src_addr, &global_ban, 0);
         return Ok(xdp_action::XDP_DROP);
     }
 
     Ok(xdp_action::XDP_PASS)
 }
-
-
-
-
 
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
