@@ -5,35 +5,30 @@
 
 > <small>This project is built on the shoulders of giants. Special thanks to the aya-rs community for the revolutionary framework that makes it possible to write high-performance eBPF in Rust.</small>
 
-## Dev Log: Architectural Vanguard
+## Dev Log: Architectural Vanguard & Distributed Clusters
 
 <small>
 
-> *"Sometimes, you have to take one step back in development to take two steps forward in architecture."*
+> *"A single gate protects a corridor; a synchronized network protects the kingdom."*
 
-Aincrad-XDP is currently at a critical transition point. To ensure this project remains the firewall reference it is, I have spent the last cycle performing a deep-system migration to **Aya 0.13.2**.
+Aincrad-XDP has evolved past a single-node network gatekeeper. We are currently implementing a **Distributed Cluster System** to synchronize state, reputation maps, and blocklists across multiple node instances in real-time.
 
-This is not merely a dependency update; it was a deliberate **reforging of the system's core**. I have been actively dismantling the technical debt accumulated from the rapid evolution of the eBPF ecosystem, refining abstractions to ensure that our security remains truly impenetrable.
+This structural expansion ensures that if one gateway node detects and drops a malicious flood, the entire cluster inherits that defensive intelligence instantly at the eBPF layer.
 
 ### The Current State of the Forge
 
-*   **Refactoring & Macros:** Stripped away legacy boilerplate. The new Aya 0.13.2 structures demand higher type-safety, which I’ve implemented across the board.
-*   **Memory Layout (Pod & Zerocopy):** Standardized data exchange using explicit byte-arrays. Every byte is now accounted for.
-*   **Kernel Residency:** The bytecode is now successfully compiled and verified by the kernel. The foundation is set.
-*   **The "Attach" Phase (In Progress):** We are currently bridging the gap between loading the program and hooking it to the network interface. In the eBPF lifecycle, residency (Load) is only half the battle; activation (Attach) is where the firewall actually begins to breathe.
+* **Cluster Synchronization (In Progress):** Engineering a lightweight state-machine to replicate `REPUTATION_MAP` entries across cluster nodes, minimizing network overhead while keeping kernel maps uniform.
+* **Refactoring & Aya 0.13.2:** The core engine is fully migrated to modern Aya structures. Memory layouts utilize standardized `Pod` and `zerocopy` byte-arrays for zero-overhead serialization between user-space and kernel-space.
+* **Kernel Residency:** The bytecode successfully passes the kernel verifier. Static loop boundaries (`for 128`) and dynamic offsets are fully calibrated, ensuring maximum performance.
+* **The Interface Layer:** * **The Interface Layer (Future Integration):** While the core backend and cluster state machine are being consolidated, the development of the graphical telemetry dashboard (`aincrad-xdp-gui` via Raylib) is planned for integration in a future, more opportune phase once the network layer achieves absolute stability.
 
-**Status:** Actively in development. 
+**Status:** Actively expanding into distributed systems.
 
-The code is being calibrated. My current focus is implementing the lifecycle management of our XDP hook, ensuring that the transition from user-space to kernel-space is not just functional, but atomic and resilient.
-
-Commits will resume at full velocity once the new foundation is 100% calibrated.
+The focus is now split between cluster mesh stability and refining the real-time telemetry dashboard.
 
 </small>
 
-
-   ###### Benchmarking: Currently establishing the baseline environment (using pktgen). Metrics and optimization reports coming soon.
-
-###### We are currently establishing performance baselines using pktgen and iperf3. Preliminary results will be published here soon. Our goal is to demonstrate Aincrad-XDP's capacity to filter 10Gbps+ traffic with minimal CPU utilization.
+###### Benchmarking: Currently establishing the baseline environment (using pktgen and iperf3). Preliminary multi-node cluster benchmarking data and state-sync latency graphs will be published below upon calibration.
 
 # Aincrad-XDP
 

@@ -1,0 +1,15 @@
+[package]
+name = "aincrad-aether"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { version = "1.43", features = ["full"] }
+tokio-stream = { version = "0.1", features = ["net"] }
+tonic = "0.12"
+prost = "0.13"
+sysinfo = "0.33"
+clap = { version = "4.5", features = ["derive"] }
+
+[build-dependencies]
+tonic-build = "0.12"
